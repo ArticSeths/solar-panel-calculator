@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizador Orientación Solar</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Ícono opcional -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
+</head>
+<body>
+    <div id="container">
+        <h1>☀️ Optimizador de Orientación Solar ☀️</h1>
+
+        <div id="status">
+            <p>Por favor, otorga permisos de ubicación y movimiento/orientación cuando se soliciten.</p>
+            <p><strong>IMPORTANTE:</strong> Coloca el móvil PLANO sobre la placa solar, con la parte SUPERIOR del móvil apuntando hacia el borde SUPERIOR de la placa.</p>
+        </div>
+
+        <div class="data-section">
+            <h2>Tu Ubicación</h2>
+            <p>Latitud: <span id="latitude">---</span>°</p>
+            <p>Longitud: <span id="longitude">---</span>°</p>
+        </div>
+
+        <div class="data-section">
+            <h2>Orientación Actual (del Móvil/Placa)</h2>
+            <p>Dirección (Azimut): <span id="current-azimuth">---</span>°</p>
+            <p>Inclinación (Tilt): <span id="current-tilt">---</span>°</p>
+            <p><small>(Azimut: 0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)</small></p>
+        </div>
+
+        <div class="data-section">
+            <h2>Orientación Óptima (Fija Anual)</h2>
+            <p>Dirección (Azimut): <span id="optimal-azimuth">---</span>°</p>
+            <p>Inclinación (Tilt): <span id="optimal-tilt">---</span>°</p>
+        </div>
+
+        <div id="instructions">
+            <h2>Instrucciones de Ajuste</h2>
+            <p id="adjustment-info">Esperando datos...</p>
+        </div>
+
+        <div id="error-message" class="error"></div>
+
+    </div>
+
+    <!-- Script al final para asegurar que el DOM esté cargado -->
+    <script src="script.js"></script>
+</body>
+</html>
