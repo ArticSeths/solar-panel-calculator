@@ -8,6 +8,7 @@ const optimalTiltDisplay = document.getElementById('optimal-tilt');
 const adjustmentInfo = document.getElementById('adjustment-info');
 const statusDiv = document.getElementById('status');
 const errorDiv = document.getElementById('error-message');
+const startButton = document.getElementById('startOrientationButton'); // Referencia al botón
 
 // --- Variables de estado ---
 let currentLatitude = null;
@@ -29,39 +30,51 @@ function showError(message) {
     console.error(message);
     errorDiv.textContent = `Error: ${message}`;
     errorDiv.style.display = 'block';
-    adjustmentInfo.textContent = 'No se pueden dar instrucciones debido a un error.';
+    // No cambiar adjustmentInfo aquí para no sobrescribir instrucciones previas si el error es temporal
 }
 
 /** Actualiza el estado inicial o mensajes */
 function updateStatus(message) {
-    statusDiv.innerHTML = `<p>${message}</p>`; // Reemplaza contenido de status
+    // Busca el primer párrafo dentro de statusDiv para actualizarlo, o añade uno si no existe
+    let statusP = statusDiv.querySelector('p');
+    if (statusP) {
+        statusP.innerHTML = message; // Usar innerHTML por si pasamos negritas u otros tags
+    } else {
+        statusDiv.innerHTML = `<p>${message}</p>`; // Reemplaza si no hay <p>
+    }
 }
 
 /** Obtiene la ubicación del usuario */
 function requestLocation() {
     updateStatus("Solicitando permiso de ubicación...");
+    adjustmentInfo.textContent = "Esperando ubicación..."; // Estado inicial de instrucciones
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(locationSuccess, locationError, {
             enableHighAccuracy: true,
-            timeout: 15000, // 15 segundos de tiempo límite
-            maximumAge: 0 // No usar caché
+            timeout: 20000, // 20 segundos de tiempo límite
+            maximumAge: 60000 // Permitir caché de 1 minuto
         });
     } else {
         showError("La Geolocalización no está disponible en este navegador.");
+        startButton.disabled = true; // Mantener botón deshabilitado
     }
 }
 
 /** Callback si la ubicación se obtiene con éxito */
 function locationSuccess(position) {
+    errorDiv.style.display = 'none'; // Ocultar errores previos si la ubicación funciona
     currentLatitude = position.coords.latitude;
     currentLongitude = position.coords.longitude;
 
     latDisplay.textContent = currentLatitude.toFixed(4);
     lonDisplay.textContent = currentLongitude.toFixed(4);
 
-    updateStatus("Ubicación obtenida. Coloca el móvil sobre la placa y asegúrate de dar permiso de movimiento si se solicita.");
+    updateStatus("Ubicación obtenida ✅. Ahora haz clic en 'Iniciar Lectura de Orientación'.");
     calculateOptimalOrientation();
-    startOrientationListener(); // Iniciar escucha de orientación DESPUÉS de obtener ubicación
+
+    // Habilitar el botón para que el usuario inicie la lectura de orientación
+    startButton.disabled = false;
+    startButton.textContent = "Iniciar Lectura de Orientación"; // Asegurar texto inicial
 }
 
 /** Callback si hay error al obtener la ubicación */
@@ -72,16 +85,18 @@ function locationError(error) {
             message = "Permiso de ubicación denegado. La aplicación no puede funcionar sin ubicación.";
             break;
         case error.POSITION_UNAVAILABLE:
-            message = "Información de ubicación no disponible.";
+            message = "Información de ubicación no disponible. Intenta de nuevo o revisa la señal GPS.";
             break;
         case error.TIMEOUT:
-            message = "Se agotó el tiempo de espera para obtener la ubicación.";
+            message = "Se agotó el tiempo de espera para obtener la ubicación. Revisa tu conexión/GPS.";
             break;
         default:
             message = `Ocurrió un error desconocido al obtener la ubicación (Código: ${error.code}).`;
             break;
     }
     showError(message);
+    startButton.disabled = true; // Asegurarse de que el botón esté deshabilitado
+    adjustmentInfo.textContent = "Error al obtener ubicación.";
 }
 
 /** Calcula la orientación óptima fija anual */
@@ -96,65 +111,82 @@ function calculateOptimalOrientation() {
     optimalAzimuthDisplay.textContent = optimalAzimuth.toFixed(1);
     optimalTiltDisplay.textContent = optimalTilt.toFixed(1);
 
-    // Una vez calculado, podemos intentar mostrar instrucciones iniciales
+    // Actualizar instrucciones ahora que tenemos la óptima, aunque aún falte la actual
     updateInstructions();
 }
 
-/** Inicia el listener para la orientación del dispositivo */
+/** Inicia el listener para la orientación del dispositivo (llamada por el botón) */
 function startOrientationListener() {
-    // Evitar añadir múltiples listeners
-    if (orientationListenerActive) return; 
+    // Deshabilitar botón temporalmente y dar feedback
+    startButton.disabled = true;
+    startButton.textContent = "Iniciando...";
+
+    // Prevenir múltiples listeners
+    if (orientationListenerActive) {
+        startButton.textContent = "Lectura Ya Iniciada";
+        // Podríamos habilitarlo de nuevo si queremos permitir reiniciar,
+        // pero por ahora lo dejamos como "ya iniciado".
+        // startButton.disabled = false;
+        return;
+    }
 
     if ('DeviceOrientationEvent' in window) {
-        // Comprobar si se necesita permiso explícito (navegadores modernos como iOS Safari)
+        // Verificar si se necesita permiso explícito (iOS >= 13, etc.)
         if (typeof DeviceOrientationEvent.requestPermission === 'function') {
             DeviceOrientationEvent.requestPermission()
                 .then(permissionState => {
                     if (permissionState === 'granted') {
                         window.addEventListener('deviceorientation', handleOrientation, true);
                         orientationListenerActive = true;
-                        updateStatus("Permiso de movimiento otorgado. Mueve el móvil para obtener lecturas.");
+                        updateStatus("Permiso de movimiento otorgado ✅. Mueve el móvil para obtener lecturas.");
+                        startButton.textContent = "Lectura de Orientación Activa";
+                         errorDiv.style.display = 'none'; // Ocultar errores previos
+                        // No deshabilitar permanentemente para posible reinicio futuro
                     } else {
                         showError("Permiso de movimiento denegado. No se puede leer la orientación.");
+                        startButton.textContent = "Permiso Denegado";
+                        startButton.disabled = false; // Permitir intentar de nuevo
                     }
                 })
                 .catch(error => {
                      showError("Error al solicitar permiso de movimiento: " + error);
+                     startButton.textContent = "Error al Solicitar Permiso";
+                     startButton.disabled = false; // Permitir reintentar
                 });
         } else {
-            // Para navegadores que no requieren permiso explícito (o ya fue dado)
+            // Navegadores/Casos donde no se requiere permiso explícito (o ya fue otorgado)
             window.addEventListener('deviceorientation', handleOrientation, true);
             orientationListenerActive = true;
-            updateStatus("Escuchando orientación del dispositivo..."); // Actualizar estado
+            updateStatus("Escuchando orientación del dispositivo... Mueve el móvil.");
+            startButton.textContent = "Lectura de Orientación Activa";
+             errorDiv.style.display = 'none'; // Ocultar errores previos
         }
     } else {
         showError("La API DeviceOrientationEvent no está disponible en este navegador.");
+        startButton.textContent = "Orientación No Soportada";
+        // El botón ya está deshabilitado, lo dejamos así.
     }
 }
 
 /** Maneja los eventos de orientación del dispositivo */
 function handleOrientation(event) {
-    // alpha: Azimut (0-360, 0=Norte Magnético)
-    // beta: Inclinación adelante-atrás (-180 a 180)
-    // gamma: Inclinación izquierda-derecha (-90 a 90)
-
+    // Ignorar si alpha es null (puede pasar al inicio o si hay interferencia)
     if (event.alpha === null || event.beta === null || event.gamma === null) {
-        // A veces los primeros eventos pueden ser null
-        updateStatus("Esperando datos de orientación válidos...");
+        console.warn("Evento de orientación con valores null recibido.");
+        // Podríamos mostrar un mensaje temporal o simplemente esperar al siguiente evento
+        // updateStatus("Esperando datos de orientación válidos...");
         return;
     }
-    
-    // --- Interpretación ---
-    // Azimut: event.alpha. Usamos el norte magnético como aproximación inicial.
-    // Para mayor precisión se necesitaría declinación magnética.
-    currentAzimuth = event.alpha;
 
-    // Inclinación (Tilt): Usamos event.beta.
-    // ASUNCIÓN: Móvil plano sobre la placa, borde superior del móvil apuntando
-    // hacia el borde superior de la placa.
-    // Limitamos a 0-90 grados, ya que la placa no se inclina "hacia atrás".
-    currentTilt = Math.max(0, Math.min(90, event.beta));
-    
+    // --- Interpretación ---
+    currentAzimuth = event.alpha; // Azimut (Norte Magnético = 0-360)
+    // Tilt (Inclinación): Usamos beta, limitado a 0-90 grados.
+    // ASUNCIÓN: Móvil plano, pantalla arriba, borde superior apunta hacia arriba de la placa.
+    currentTilt = event.beta;
+    // Corregir si beta da valores negativos o > 90 (depende de la orientación inicial del móvil)
+    if (currentTilt < -90) { currentTilt += 180;} // Ajuste común si el móvil está boca abajo
+    currentTilt = Math.max(0, Math.min(90, currentTilt)); // Forzar rango 0-90
+
     // --- Actualizar UI ---
     currentAzimuthDisplay.textContent = currentAzimuth.toFixed(1);
     currentTiltDisplay.textContent = currentTilt.toFixed(1);
@@ -165,51 +197,52 @@ function handleOrientation(event) {
 
 /** Calcula y muestra las instrucciones de ajuste */
 function updateInstructions() {
+    let infoText = "";
+
     if (optimalAzimuth === null || optimalTilt === null) {
-        adjustmentInfo.textContent = "Calculando orientación óptima...";
-        return;
-    }
-    if (currentAzimuth === null || currentTilt === null) {
-        adjustmentInfo.textContent = "Esperando lectura de orientación del móvil...";
-        return;
-    }
-
-    // --- Calcular diferencias ---
-    let azimuthDiff = optimalAzimuth - currentAzimuth;
-    // Normalizar diferencia de azimut a un rango de -180 a +180 grados
-    while (azimuthDiff <= -180) azimuthDiff += 360;
-    while (azimuthDiff > 180) azimuthDiff -= 360;
-
-    let tiltDiff = optimalTilt - currentTilt;
-
-    // --- Generar mensajes ---
-    let instructions = [];
-
-    // Instrucción de Azimut
-    if (Math.abs(azimuthDiff) > AZIMUTH_THRESHOLD) {
-        const direction = azimuthDiff > 0 ? 'la DERECHA (sentido horario)' : 'la IZQUIERDA (sentido antihorario)';
-        instructions.push(`Girar ${Math.abs(azimuthDiff).toFixed(0)}° hacia ${direction}`);
+        infoText = "Esperando ubicación para calcular orientación óptima...";
+    } else if (currentAzimuth === null || currentTilt === null) {
+        // Si ya tenemos la óptima pero no la actual
+        infoText = "Haz clic en 'Iniciar Lectura' y mueve el móvil para obtener la orientación actual.";
     } else {
-        instructions.push("✅ Dirección (Azimut) correcta.");
+        // Tenemos todos los datos, calcular diferencias
+        let azimuthDiff = optimalAzimuth - currentAzimuth;
+        while (azimuthDiff <= -180) azimuthDiff += 360;
+        while (azimuthDiff > 180) azimuthDiff -= 360;
+
+        let tiltDiff = optimalTilt - currentTilt;
+
+        let instructions = [];
+
+        // Instrucción de Azimut
+        if (Math.abs(azimuthDiff) > AZIMUTH_THRESHOLD) {
+            const direction = azimuthDiff > 0 ? '➡️ Derecha (horario)' : '⬅️ Izquierda (antihorario)';
+            instructions.push(`Girar ${Math.abs(azimuthDiff).toFixed(0)}° ${direction}`);
+        } else {
+            instructions.push("✅ Dirección (Azimut) correcta.");
+        }
+
+        // Instrucción de Inclinación
+        if (Math.abs(tiltDiff) > TILT_THRESHOLD) {
+            const direction = tiltDiff > 0 ? '⬆️ ARRIBA' : '⬇️ ABAJO';
+            instructions.push(`Inclinar ${Math.abs(tiltDiff).toFixed(0)}° ${direction}`);
+        } else {
+            instructions.push("✅ Inclinación (Tilt) correcta.");
+        }
+        infoText = instructions.join('<br>'); // Unir con saltos de línea HTML
     }
 
-    // Instrucción de Inclinación
-    if (Math.abs(tiltDiff) > TILT_THRESHOLD) {
-        const direction = tiltDiff > 0 ? 'ARRIBA' : 'ABAJO';
-        instructions.push(`Inclinar ${Math.abs(tiltDiff).toFixed(0)}° hacia ${direction}`);
-    } else {
-        instructions.push("✅ Inclinación (Tilt) correcta.");
-    }
-
-    // --- Mostrar instrucciones ---
-    adjustmentInfo.innerHTML = instructions.join('<br>'); // Usar <br> para saltos de línea
+    adjustmentInfo.innerHTML = infoText; // Usar innerHTML para que <br> funcione
 }
 
 
 // --- Inicialización ---
 window.onload = () => {
-    // Ocultar error al inicio
-    errorDiv.style.display = 'none';
-    // Solicitar ubicación al cargar la página
+    errorDiv.style.display = 'none'; // Ocultar div de error al inicio
+
+    // Añadir listener al botón para que llame a startOrientationListener al hacer clic
+    startButton.addEventListener('click', startOrientationListener);
+
+    // Solicitar ubicación automáticamente al cargar la página
     requestLocation();
 };

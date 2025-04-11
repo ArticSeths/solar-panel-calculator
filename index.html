@@ -13,9 +13,13 @@
         <h1>☀️ Optimizador de Orientación Solar ☀️</h1>
 
         <div id="status">
-            <p>Por favor, otorga permisos de ubicación y movimiento/orientación cuando se soliciten.</p>
+            <p>Por favor, otorga permiso de ubicación cuando se solicite.</p>
             <p><strong>IMPORTANTE:</strong> Coloca el móvil PLANO sobre la placa solar, con la parte SUPERIOR del móvil apuntando hacia el borde SUPERIOR de la placa.</p>
         </div>
+
+        <!-- BOTÓN PARA INICIAR LECTURA DE ORIENTACIÓN -->
+        <button id="startOrientationButton" disabled>Iniciar Lectura de Orientación</button>
+        <!-- FIN BOTÓN -->
 
         <div class="data-section">
             <h2>Tu Ubicación</h2>
@@ -27,7 +31,8 @@
             <h2>Orientación Actual (del Móvil/Placa)</h2>
             <p>Dirección (Azimut): <span id="current-azimuth">---</span>°</p>
             <p>Inclinación (Tilt): <span id="current-tilt">---</span>°</p>
-            <p><small>(Azimut: 0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)</small></p>
+            <p><small>(Azimut: 0°≈Norte, 90°≈Este, 180°≈Sur, 270°≈Oeste)</small></p>
+            <p><small>(Tilt: 0°=Horizontal, 90°=Vertical)</small></p>
         </div>
 
         <div class="data-section">

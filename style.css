@@ -56,10 +56,34 @@ h2 {
     padding: 10px;
     border-radius: 4px;
     font-size: 0.95em;
+    margin-top: 5px;
+    margin-bottom: 15px; /* Espacio antes del botón */
 }
 
 #status strong {
     color: #d63031; /* Rojo para énfasis */
+}
+
+#startOrientationButton {
+    display: block; /* Hacerlo bloque para ocupar ancho */
+    margin: 20px auto; /* Centrarlo y darle espacio */
+    padding: 12px 25px;
+    font-size: 1.1em;
+    color: white;
+    background-color: #3498db; /* Azul */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#startOrientationButton:disabled {
+    background-color: #bdc3c7; /* Gris cuando está deshabilitado */
+    cursor: not-allowed;
+}
+
+#startOrientationButton:not(:disabled):hover {
+    background-color: #2980b9; /* Azul más oscuro al pasar el ratón */
 }
 
 #instructions {
@@ -80,11 +104,19 @@ h2 {
     font-weight: bold;
     color: #d35400; /* Naranja oscuro */
     min-height: 50px; /* Espacio para que no salte tanto */
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+#adjustment-info br {
+    margin-bottom: 5px; /* Espacio entre líneas de instrucción */
 }
 
 small {
     font-size: 0.8em;
     color: #777;
+    display: block; /* Para que cada <small> ocupe su línea */
+    margin-top: 2px;
 }
 
 .error {
