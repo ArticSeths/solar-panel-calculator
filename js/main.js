@@ -8,7 +8,7 @@ const optimalOrientationEl = document.getElementById('optimal-orientation');
 // Variables globales
 let latitude, longitude;
 
-// Inicializar Three.js (sin cambios)
+// Inicializar Three.js
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
@@ -29,19 +29,23 @@ function animate() {
 }
 animate();
 
-// Detectar si es iOS
+// Detectar si es un dispositivo iOS
 function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const userAgent = navigator.userAgent || navigator.platform || '';
+    return /iPad|iPhone|iPod/.test(userAgent) || /Macintosh/.test(userAgent) && 'ontouchstart' in window;
 }
 
-// Solicitar permiso para sensores en iOS
+// Solicitar permiso para sensores
 function requestDeviceOrientationPermission() {
     if (isIOS() && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        console.log('Solicitando permiso para sensores');
         DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
                 if (permissionState === 'granted') {
+                    console.log('Permiso concedido, registrando evento de orientación');
                     window.addEventListener('deviceorientation', handleOrientation);
                 } else {
+                    console.log('Permiso denegado');
                     orientationEl.textContent = 'Permiso denegado para sensores';
                     tiltEl.textContent = 'No disponible';
                 }
@@ -50,8 +54,6 @@ function requestDeviceOrientationPermission() {
                 console.error('Error solicitando permiso:', error);
                 orientationEl.textContent = 'Error al acceder a sensores';
             });
-    } else {
-        window.addEventListener('deviceorientation', handleOrientation);
     }
 }
 
@@ -69,46 +71,125 @@ function handleOrientation(event) {
     }
 }
 
-// Añadir botón para iOS
-document.addEventListener('DOMContentLoaded', () => {
-    if (isIOS()) {
+// Crear y añadir el botón para sensores
+function setupSensorButton() {
+    if (isIOS() && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        console.log('Dispositivo iOS detectado, añadiendo botón para sensores');
         const button = document.createElement('button');
+        button.id = 'sensor-button';
         button.textContent = 'Activar sensores';
         button.style.margin = '10px';
         button.style.padding = '10px 20px';
         button.style.fontSize = '16px';
-        document.getElementById('container').prepend(button);
+        button.style.backgroundColor = '#007bff';
+        button.style.color = '#fff';
+        button.style.border = 'none';
+        button.style.borderRadius = '5px';
+        button.style.cursor = 'pointer';
+        button.style.display = 'block';
+
+        const container = document.getElementById('container');
+        if (container) {
+            container.prepend(button);
+            console.log('Botón añadido al contenedor');
+        } else {
+            console.warn('Contenedor #container no encontrado, añadiendo al body');
+            document.body.prepend(button);
+        }
+
         button.addEventListener('click', requestDeviceOrientationPermission);
     } else {
-        requestDeviceOrientationPermission();
+        console.log('No es iOS o no requiere permiso, registrando evento de orientación directamente');
+        window.addEventListener('deviceorientation', handleOrientation);
     }
+}
+
+// Solicitar geolocalización
+function requestGeolocation() {
+    if ('geolocation' in navigator) {
+        console.log('Solicitando geolocalización');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                console.log('Geolocalización obtenida:', position.coords);
+                latitude = position.coords.latitude;
+                longitude = position.coords.longitude;
+                locationEl.textContent = `Lat: ${latitude.toFixed(2)}, Lon: ${longitude.toFixed(2)}`;
+
+                const now = new Date();
+                const sunPosition = SunCalc.getPosition(now, latitude, longitude);
+                const optimalOrientation = latitude >= 0 ? 180 : 0;
+                const optimalTilt = Math.abs(latitude);
+
+                optimalOrientationEl.textContent = `${optimalOrientation}° (${latitude >= 0 ? 'Sur' : 'Norte'})`;
+                optimalTiltEl.textContent = `${optimalTilt.toFixed(1)}°`;
+            },
+            (error) => {
+                console.error('Error de geolocalización:', error.code, error.message);
+                let errorMessage = 'No se pudo obtener la ubicación. ';
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Por favor, permite el acceso a la ubicación en los ajustes.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'La ubicación no está disponible. Asegúrate de que los servicios de ubicación están activados.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Tiempo de espera agotado. Intenta de nuevo.';
+                        break;
+                    default:
+                        errorMessage += 'Error desconocido.';
+                }
+                locationEl.textContent = errorMessage;
+                retryGeoButton.style.display = 'block'; // Mostrar botón de reintento
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        console.error('Geolocalización no soportada por el navegador');
+        locationEl.textContent = 'Geolocalización no soportada por este navegador.';
+    }
+}
+
+// Botón para reintentar geolocalización
+const retryGeoButton = document.createElement('button');
+retryGeoButton.textContent = 'Reintentar ubicación';
+retryGeoButton.style.margin = '10px';
+retryGeoButton.style.padding = '10px 20px';
+retryGeoButton.style.fontSize = '16px';
+retryGeoButton.style.backgroundColor = '#28a745';
+retryGeoButton.style.color = '#fff';
+retryGeoButton.style.border = 'none';
+retryGeoButton.style.borderRadius = '5px';
+retryGeoButton.style.display = 'none';
+document.getElementById('container').append(retryGeoButton);
+
+retryGeoButton.addEventListener('click', () => {
+    console.log('Reintentando geolocalización');
+    requestGeolocation();
 });
 
-// Obtener ubicación (sin cambios)
-navigator.geolocation.getCurrentPosition(
-    (position) => {
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
-        locationEl.textContent = `Lat: ${latitude.toFixed(2)}, Lon: ${longitude.toFixed(2)}`;
+// Ejecutar al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM cargado, configurando botón y geolocalización');
+    setupSensorButton();
+    requestGeolocation();
+});
 
-        const now = new Date();
-        const sunPosition = SunCalc.getPosition(now, latitude, longitude);
-        const optimalOrientation = latitude >= 0 ? 180 : 0;
-        const optimalTilt = Math.abs(latitude);
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('DOM ya está listo, configurando botón y geolocalización');
+    setupSensorButton();
+    requestGeolocation();
+}
 
-        optimalOrientationEl.textContent = `${optimalOrientation}° (Sur)`;
-        optimalTiltEl.textContent = `${optimalTilt.toFixed(1)}°`;
-    },
-    (error) => {
-        locationEl.textContent = 'No se pudo obtener la ubicación';
-        console.error(error);
-    }
-);
-
-// Ajustar tamaño del canvas (sin cambios)
+// Ajustar tamaño del canvas
 window.addEventListener('resize', () => {
     const width = canvasContainer.offsetWidth;
-    renderer.setSize(width, 400);
-    camera.aspect = width / 400;
+    const height = Math.min(400, window.innerHeight - 100);
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
 });
