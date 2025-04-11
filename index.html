@@ -4,19 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orientación de Placa Solar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
-    <div id="container">
-        <h1>Orientación óptima para tu placa solar</h1>
-        <div id="info">
+<body class="bg-gray-100 font-sans">
+    <div id="container" class="max-w-2xl mx-auto p-4">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-4">Orientación óptima para tu placa solar</h1>
+        <p id="instructions" class="text-center text-gray-600 mb-4">
+            Mueve tu móvil para alinear la placa solar con la posición óptima. Cuando el círculo rojo se superponga con el verde, ¡estás listo!
+        </p>
+        <div id="info" class="bg-white p-4 rounded-lg shadow-md mb-4">
             <p><strong>Ubicación:</strong> <span id="location">Esperando...</span></p>
             <p><strong>Inclinación actual:</strong> <span id="tilt">0°</span></p>
             <p><strong>Orientación actual:</strong> <span id="orientation">0°</span></p>
             <p><strong>Inclinación óptima:</strong> <span id="optimal-tilt">Calculando...</span></p>
             <p><strong>Orientación óptima:</strong> <span id="optimal-orientation">Calculando...</span></p>
+            <p id="alignment-status" class="font-bold text-center mt-2"></p>
         </div>
-        <div id="canvas-container"></div>
+        <div id="alignment-indicator" class="relative w-full h-32 mb-4">
+            <div id="target-circle" class="absolute w-6 h-6 bg-green-500 rounded-full border-2 border-green-700"></div>
+            <div id="current-circle" class="absolute w-6 h-6 bg-red-500 rounded-full border-2 border-red-700"></div>
+            <div id="arrow-left" class="absolute hidden w-6 h-6 text-blue-600">←</div>
+            <div id="arrow-right" class="absolute hidden w-6 h-6 text-blue-600">→</div>
+            <div id="arrow-up" class="absolute hidden w-6 h-6 text-blue-600">↑</div>
+            <div id="arrow-down" class="absolute hidden w-6 h-6 text-blue-600">↓</div>
+        </div>
+        <div id="canvas-container" class="w-full h-80 border border-gray-300 rounded-lg"></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.8.0/suncalc.min.js"></script>
