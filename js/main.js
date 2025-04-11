@@ -8,7 +8,7 @@ const optimalOrientationEl = document.getElementById('optimal-orientation');
 // Variables globales
 let latitude, longitude;
 
-// Inicializar Three.js
+// Inicializar Three.js (sin cambios)
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 400, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
@@ -21,33 +21,79 @@ const geometry = new THREE.PlaneGeometry(2, 1);
 const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
 const panel = new THREE.Mesh(geometry, material);
 scene.add(panel);
-
-// Posicionar la cámara
 camera.position.z = 5;
 
-// Animación del renderizado
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
 animate();
 
-// Obtener ubicación
+// Detectar si es iOS
+function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// Solicitar permiso para sensores en iOS
+function requestDeviceOrientationPermission() {
+    if (isIOS() && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation);
+                } else {
+                    orientationEl.textContent = 'Permiso denegado para sensores';
+                    tiltEl.textContent = 'No disponible';
+                }
+            })
+            .catch(error => {
+                console.error('Error solicitando permiso:', error);
+                orientationEl.textContent = 'Error al acceder a sensores';
+            });
+    } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+    }
+}
+
+// Manejar datos de orientación
+function handleOrientation(event) {
+    const alpha = event.alpha; // Orientación respecto al norte (0-360°)
+    const beta = event.beta;   // Inclinación vertical (-90 a 90°)
+
+    orientationEl.textContent = alpha !== null ? `${alpha.toFixed(1)}°` : 'No disponible';
+    tiltEl.textContent = beta !== null ? `${beta.toFixed(1)}°` : 'No disponible';
+
+    if (alpha !== null && beta !== null) {
+        panel.rotation.x = THREE.MathUtils.degToRad(beta);
+        panel.rotation.z = THREE.MathUtils.degToRad(-alpha);
+    }
+}
+
+// Añadir botón para iOS
+document.addEventListener('DOMContentLoaded', () => {
+    if (isIOS()) {
+        const button = document.createElement('button');
+        button.textContent = 'Activar sensores';
+        button.style.margin = '10px';
+        button.style.padding = '10px 20px';
+        button.style.fontSize = '16px';
+        document.getElementById('container').prepend(button);
+        button.addEventListener('click', requestDeviceOrientationPermission);
+    } else {
+        requestDeviceOrientationPermission();
+    }
+});
+
+// Obtener ubicación (sin cambios)
 navigator.geolocation.getCurrentPosition(
     (position) => {
         latitude = position.coords.latitude;
         longitude = position.coords.longitude;
         locationEl.textContent = `Lat: ${latitude.toFixed(2)}, Lon: ${longitude.toFixed(2)}`;
 
-        // Calcular posición del sol con SunCalc
         const now = new Date();
         const sunPosition = SunCalc.getPosition(now, latitude, longitude);
-        const sunAzimuth = (sunPosition.azimuth * 180) / Math.PI; // Convertir a grados
-        const sunAltitude = (sunPosition.altitude * 180) / Math.PI;
-
-        // Orientación óptima: hacia el sur (180° en el hemisferio norte)
         const optimalOrientation = latitude >= 0 ? 180 : 0;
-        // Inclinación óptima: aproximada a la latitud
         const optimalTilt = Math.abs(latitude);
 
         optimalOrientationEl.textContent = `${optimalOrientation}° (Sur)`;
@@ -59,23 +105,7 @@ navigator.geolocation.getCurrentPosition(
     }
 );
 
-// Acceder al giroscopio
-window.addEventListener('deviceorientation', (event) => {
-    const alpha = event.alpha; // Orientación respecto al norte (0-360°)
-    const beta = event.beta;   // Inclinación vertical (-90 a 90°)
-
-    // Actualizar información en pantalla
-    orientationEl.textContent = alpha ? `${alpha.toFixed(1)}°` : 'No disponible';
-    tiltEl.textContent = beta ? `${beta.toFixed(1)}°` : 'No disponible';
-
-    // Rotar el panel en 3D según la orientación del dispositivo
-    if (alpha !== null && beta !== null) {
-        panel.rotation.x = THREE.MathUtils.degToRad(beta);
-        panel.rotation.z = THREE.MathUtils.degToRad(-alpha);
-    }
-});
-
-// Ajustar el tamaño del canvas al redimensionar
+// Ajustar tamaño del canvas (sin cambios)
 window.addEventListener('resize', () => {
     const width = canvasContainer.offsetWidth;
     renderer.setSize(width, 400);
